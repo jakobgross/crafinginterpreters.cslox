@@ -4,38 +4,48 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace crafinginterpreters.cslox
 {
-    public class Interpreter : Expr.IVisitor<object>
+    public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object>
     {
+        private Environment environment = new Environment();
+
         public class RuntimeError : Exception
         {
             public readonly Token _token;
-            public RuntimeError(Token token, string message): base(message)
+            public RuntimeError(Token token, string message) : base(message)
             {
                 _token = token;
             }
         }
 
-        public void interpret(Expr expression)
+        public void interpret(List<Stmt> statements)
         {
             try
             {
-                object value = evaluate(expression);
-                Console.WriteLine(stringify(value));
+                foreach (Stmt statement in statements)
+                {
+                    execute(statement);
+                }
             }
-            catch(RuntimeError e)
+            catch (RuntimeError e)
             {
                 Program.runtimeError(e);
             }
         }
 
+        private void execute(Stmt statement)
+        {
+            statement.Accept(this);
+        }
+
         private string stringify(object obj)
         {
-            if(obj is null) return "nil";
+            if (obj is null) return "nil";
             if (obj is double) return ((double)obj).ToString();
             return obj.ToString();
         }
@@ -57,7 +67,7 @@ namespace crafinginterpreters.cslox
             return null;
         }
 
-        
+
 
         public object VisitBinaryExpr(Expr.Binary expr)
         {
@@ -66,11 +76,11 @@ namespace crafinginterpreters.cslox
             switch (expr.Operator._type)
             {
                 case TokenType.MINUS:
-                    CheckNumberOperands(expr.Operator,left, right);
+                    CheckNumberOperands(expr.Operator, left, right);
                     return (double)left - (double)right;
                 case TokenType.SLASH:
                     CheckNumberOperands(expr.Operator, left, right);
-                    if((double) right == 0)
+                    if ((double)right == 0)
                     {
                         throw new RuntimeError(expr.Operator, "Division by Zero is not allowed");
                     }
@@ -79,11 +89,11 @@ namespace crafinginterpreters.cslox
                     CheckNumberOperands(expr.Operator, left, right);
                     return (double)left * (double)right;
                 case TokenType.PLUS:
-                    if(left is string || right is string)
+                    if (left is string || right is string)
                     {
                         return left.ToString() + right.ToString();
                     }
-                    if(left is double && right is double)
+                    if (left is double && right is double)
                     {
                         return (double)left + (double)right;
                     }
@@ -130,12 +140,14 @@ namespace crafinginterpreters.cslox
         private void CheckNumberOperand(Token op, object operand)
         {
             if (operand is double) return;
-            throw new RuntimeError(op,"Operand must be a number.");
+            throw new RuntimeError(op, "Operand must be a number.");
         }
 
         public object VisitAssignExpr(Expr.Assign expr)
         {
-            throw new NotImplementedException();
+            object value = evaluate(expr.value);
+            environment.assign(expr.Name, value);
+            return value;
         }
         public object VisitLogicalExpr(Expr.Logical expr)
         {
@@ -162,6 +174,60 @@ namespace crafinginterpreters.cslox
             throw new NotImplementedException();
         }
         public object VisitVariableExpr(Expr.Variable expr)
+        {
+            return environment.get(expr.Name);
+        }
+
+        public object visitBlockStmt(Stmt.Block stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object visitClassStmt(Stmt.Class stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object visitExpressionStmt(Stmt.Expression stmt)
+        {
+            evaluate(stmt.expression);
+            return null;
+        }
+
+        public object visitFunctionStmt(Stmt.Function stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object visitIfStmt(Stmt.If stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object visitPrintStmt(Stmt.Print stmt)
+        {
+            Object value = evaluate(stmt.expression);
+            Console.WriteLine(stringify(value));
+            return null;
+        }
+
+        public object visitReturnStmt(Stmt.Return stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object visitVarStmt(Stmt.Var stmt)
+        {
+            object value = null;
+            if(stmt.initializer != null)
+            {
+                value = evaluate(stmt.initializer);
+            }
+            environment.define(stmt.name._lexme, value);
+            return null;
+        }
+
+        public object visitWhileStmt(Stmt.While stmt)
         {
             throw new NotImplementedException();
         }

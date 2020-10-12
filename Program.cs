@@ -19,7 +19,7 @@ namespace crafinginterpreters.cslox
             if (args.Length > 2)
             {
                 Console.WriteLine("Usage cslox.exe [script]");
-                Environment.Exit(-1);
+                System.Environment.Exit(-1);
             }
             else if(args.Length == 2)
             {
@@ -57,18 +57,10 @@ namespace crafinginterpreters.cslox
             _hadRuntimeError = false;
             Scanner scanner = new Scanner(data);
             List<Token> tokens = scanner.scanTokens();
-
-            //foreach(Token token in tokens)
-            //{
-            //    Console.WriteLine(token);
-            //}
-
             Parser parser = new Parser(tokens);
-            Expr expression = parser.Parse();
+            List<Stmt> statements = parser.Parse();
             if (_error) return;
-            Console.WriteLine(new AstPrinter().PrintExpr(expression));
-            interpreter.interpret(expression);
-            //if (_hadRuntimeError) Environment.Exit(70);
+            interpreter.interpret(statements);
         }
 
         public static void error(int line, String message)

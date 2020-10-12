@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace crafinginterpreters.cslox
 {
-    public class Parser
+    public class Parser 
     { 
 
         private readonly List<Token> _tokens;
@@ -23,21 +23,84 @@ namespace crafinginterpreters.cslox
             _tokens = tokens;
         }
 
-        public Expr Parse()
+        public List<Stmt> Parse()
+        {
+            List<Stmt> statements = new List<Stmt>();
+            while (!isAtEnd())
+            {
+                statements.Add(declaration());
+            }
+            return statements;
+        }
+
+        private Stmt declaration()
         {
             try
             {
-                return expression();
+                if (match(TokenType.VAR)) return varDeclaration();
+                return statement();
             }
-            catch (ParseError)
+            catch (ParseError e)
             {
+                synchronize();
                 return null;
             }
         }
 
-        private Expr expression()
+        private Stmt varDeclaration()
         {
-            return equality();
+            Token name = consume(TokenType.IDENTIFIER, "Expect Variable Name.");
+            Expr intitialize = null;
+            if (match(TokenType.EQUAL))
+            {
+                intitialize = express();
+            }
+            consume(TokenType.SEMICOLON, "Expect ; after Variable Declaration");
+            return new Stmt.Var(name, intitialize);
+
+        }
+
+        private Stmt statement()
+        {
+            if (match(TokenType.PRINT)) return printStatement();
+            return expressionStatement();
+        
+        }
+
+        private Stmt expressionStatement()
+        {
+            Expr expr = express();
+            consume(TokenType.SEMICOLON, "Expect ';' after expression");
+            return new Stmt.Expression(expr);
+        }
+
+        private Expr assignment()
+        {
+            Expr expr = equality();
+            if (match(TokenType.EQUAL))
+            {
+                Token equals = previous();
+                Expr value = assignment();
+
+                if (expr is Expr.Variable)
+                {
+                    Token name = ((Expr.Variable)expr).Name;
+                    return new Expr.Assign(name, value);
+                }
+                error(equals, "Invalid assignment target.");
+            }
+            return expr;
+        }
+        private Stmt printStatement()
+        {
+            Expr value = express();
+            consume(TokenType.SEMICOLON, "Expect ';' after value");
+            return new Stmt.Print(value);
+        }
+
+        private Expr express()
+        {
+            return assignment();
         }
 
         private Expr equality()
@@ -106,8 +169,9 @@ namespace crafinginterpreters.cslox
             if (match(TokenType.TRUE))      return new Expr.Literal(true);
             if (match(TokenType.NIL))       return new Expr.Literal(null);
             if (match(TokenType.NUMBER, TokenType.STRING)) return new Expr.Literal(previous()._literal);
+            if (match(TokenType.IDENTIFIER)) return new Expr.Variable(previous());
             if (match(TokenType.LEFT_PARENTHESIS)){
-                Expr expr = expression();
+                Expr expr = express();
                 consume(TokenType.RIGHT_PARENTHESIS, "Expect ')' after expression");
                 return new Expr.Grouping(expr);
             }
