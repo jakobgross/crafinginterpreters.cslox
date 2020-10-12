@@ -118,7 +118,7 @@ namespace crafinginterpreters.cslox
                     }
                     else
                     {
-                        Program.error(_line, $"unrecognised Token: {c}");
+                        Program.Error(_line, $"unrecognised Token: {c}");
                     }
                     break;
             }
@@ -169,7 +169,7 @@ namespace crafinginterpreters.cslox
 
             if(isAtEnd())
             {
-                Program.error(_line, "Unterminated String.");
+                Program.Error(_line, "Unterminated String.");
                 return;
             }
             advance();

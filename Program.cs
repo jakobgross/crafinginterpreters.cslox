@@ -23,15 +23,15 @@ namespace crafinginterpreters.cslox
             }
             else if(args.Length == 2)
             {
-                runFile(args[1]);
+                RunFile(args[1]);
             }
             else
             {
-                runPrompt();
+                RunPrompt();
             }
         }
 
-        private static void runPrompt()
+        private static void RunPrompt()
         {
             for(; ; )
             {
@@ -39,19 +39,19 @@ namespace crafinginterpreters.cslox
                 string line = Console.ReadLine();
                 if (line == null)
                     break;
-                run(line);
+                Run(line);
             }
         }
 
-        private static void runFile(string inputfile)
+        private static void RunFile(string inputfile)
         {
             if (!File.Exists(inputfile))
                 throw new IOException($"File {inputfile} does not exists");
             string data = File.ReadAllText(inputfile);
-            run(data);
+            Run(data);
         }
 
-        private static void run(string data)
+        private static void Run(string data)
         {
             _error = false;
             _hadRuntimeError = false;
@@ -63,26 +63,26 @@ namespace crafinginterpreters.cslox
             interpreter.interpret(statements);
         }
 
-        public static void error(int line, String message)
+        public static void Error(int line, String message)
         {
-            report(line, "", message);
+            Report(line, "", message);
         }
 
-        private static void report(int line, string where, string message)
+        private static void Report(int line, string where, string message)
         {
             Console.Error.WriteLine($"[line {line}] Error: {where}: {message}");
             _error = true;
         }
 
-        internal static void error(Token token, string message)
+        internal static void Error(Token token, string message)
         {
             if (token._type == TokenType.EOF)
             {
-                report(token._line, "at end", message);
+                Report(token._line, "at end", message);
             }
             else
             {
-                report(token._line, "at '" + token._lexme + "'", message);
+                Report(token._line, "at '" + token._lexme + "'", message);
             }
         }
         public static void runtimeError(RuntimeError error)

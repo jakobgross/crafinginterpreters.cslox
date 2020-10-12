@@ -146,12 +146,21 @@ namespace crafinginterpreters.cslox
         public object VisitAssignExpr(Expr.Assign expr)
         {
             object value = evaluate(expr.value);
-            environment.assign(expr.Name, value);
+            environment.Assign(expr.Name, value);
             return value;
         }
         public object VisitLogicalExpr(Expr.Logical expr)
         {
-            throw new NotImplementedException();
+            object left = evaluate(expr.Left);
+            if(expr.Operator._type == TokenType.OR)
+            {
+                if (isTruthy(left)) return left;
+            }
+            else
+            {
+                if (!isTruthy(left)) return left;
+            }
+            return evaluate(expr.Right);
         }
         public object VisitCallExpr(Expr.Call expr)
         {
@@ -175,12 +184,30 @@ namespace crafinginterpreters.cslox
         }
         public object VisitVariableExpr(Expr.Variable expr)
         {
-            return environment.get(expr.Name);
+            return environment.Get(expr.Name);
         }
 
         public object visitBlockStmt(Stmt.Block stmt)
         {
-            throw new NotImplementedException();
+            executeBlock(stmt.statements, new Environment(environment));
+            return null;
+        }
+
+        private void executeBlock(List<Stmt> statements, Environment environment)
+        {
+            Environment previous = this.environment;
+            try
+            {
+                this.environment = environment;
+                foreach (Stmt statement in statements)
+                {
+                    execute(statement);
+                }
+            }
+            finally
+            {
+                this.environment = previous;
+            }
         }
 
         public object visitClassStmt(Stmt.Class stmt)
@@ -201,7 +228,15 @@ namespace crafinginterpreters.cslox
 
         public object visitIfStmt(Stmt.If stmt)
         {
-            throw new NotImplementedException();
+            if (isTruthy(evaluate(stmt.condition)))
+            {
+                execute(stmt.thenBranch);
+            }
+            else if(stmt.elseBranch != null)
+            {
+                execute(stmt.elseBranch);
+            }
+            return null;
         }
 
         public object visitPrintStmt(Stmt.Print stmt)
@@ -223,7 +258,7 @@ namespace crafinginterpreters.cslox
             {
                 value = evaluate(stmt.initializer);
             }
-            environment.define(stmt.name._lexme, value);
+            environment.Define(stmt.name._lexme, value);
             return null;
         }
 

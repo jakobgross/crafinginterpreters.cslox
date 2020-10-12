@@ -2,6 +2,7 @@
 using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
@@ -10,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace crafinginterpreters.cslox
 {
-    public class Parser 
-    { 
+    public class Parser
+    {
 
         private readonly List<Token> _tokens;
         private int _current = 0;
@@ -62,9 +63,36 @@ namespace crafinginterpreters.cslox
 
         private Stmt statement()
         {
+            if (match(TokenType.IF)) return ifStatement();
             if (match(TokenType.PRINT)) return printStatement();
+            if (match(TokenType.LEFT_BRACE)) return new Stmt.Block(block());
             return expressionStatement();
-        
+
+        }
+
+        private Stmt ifStatement()
+        {
+            consume(TokenType.LEFT_PARENTHESIS, "Expect '(' after if keyword");
+            Expr condition = express();
+            consume(TokenType.RIGHT_PARENTHESIS, "Expect ')' after if condition");
+            Stmt thenBranch = statement();
+            Stmt elseBranch = null;
+            if (match(TokenType.ELSE))
+            {
+                elseBranch = statement();
+            }
+            return new Stmt.If(condition, thenBranch, elseBranch);
+        }
+
+        private List<Stmt> block()
+        {
+            List<Stmt> statements = new List<Stmt>();
+            while(!check(TokenType.RIGHT_BRACE) && !isAtEnd())
+            {
+                statements.Add(declaration());
+            }
+            consume(TokenType.RIGHT_BRACE, "Expect '}' after Block");
+            return statements;
         }
 
         private Stmt expressionStatement()
@@ -76,7 +104,7 @@ namespace crafinginterpreters.cslox
 
         private Expr assignment()
         {
-            Expr expr = equality();
+            Expr expr = or();
             if (match(TokenType.EQUAL))
             {
                 Token equals = previous();
@@ -91,6 +119,31 @@ namespace crafinginterpreters.cslox
             }
             return expr;
         }
+
+        private Expr or()
+        {
+            Expr expr = and();
+            while (match(TokenType.OR))
+            {
+                Token op = previous();
+                Expr right = and();
+                expr = new Expr.Logical(expr, op, right);
+            }
+            return expr;
+        }
+
+        private Expr and()
+        {
+            Expr expr = equality();
+            while (match(TokenType.AND))
+            {
+                Token op = previous();
+                Expr right = equality();
+                expr = new Expr.Logical(expr, op, right);
+            }
+            return expr;
+        }
+
         private Stmt printStatement()
         {
             Expr value = express();
@@ -118,7 +171,7 @@ namespace crafinginterpreters.cslox
         private Expr comparison()
         {
             Expr expr = addition();
-            while (match(TokenType.GREATER, TokenType.GREATER_EQUAL,TokenType.LESS, TokenType.LESS_EQUAL))
+            while (match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL))
             {
                 Token op = previous();
                 Expr right = addition();
@@ -130,7 +183,7 @@ namespace crafinginterpreters.cslox
         private Expr addition()
         {
             Expr expr = multiplication();
-            while(match(TokenType.MINUS, TokenType.PLUS))
+            while (match(TokenType.MINUS, TokenType.PLUS))
             {
                 Token op = previous();
                 Expr right = multiplication();
@@ -165,12 +218,13 @@ namespace crafinginterpreters.cslox
 
         private Expr primary()
         {
-            if (match(TokenType.FALSE))     return new Expr.Literal(false);
-            if (match(TokenType.TRUE))      return new Expr.Literal(true);
-            if (match(TokenType.NIL))       return new Expr.Literal(null);
+            if (match(TokenType.FALSE)) return new Expr.Literal(false);
+            if (match(TokenType.TRUE)) return new Expr.Literal(true);
+            if (match(TokenType.NIL)) return new Expr.Literal(null);
             if (match(TokenType.NUMBER, TokenType.STRING)) return new Expr.Literal(previous()._literal);
             if (match(TokenType.IDENTIFIER)) return new Expr.Variable(previous());
-            if (match(TokenType.LEFT_PARENTHESIS)){
+            if (match(TokenType.LEFT_PARENTHESIS))
+            {
                 Expr expr = express();
                 consume(TokenType.RIGHT_PARENTHESIS, "Expect ')' after expression");
                 return new Expr.Grouping(expr);
@@ -186,13 +240,13 @@ namespace crafinginterpreters.cslox
 
         private ParseError error(Token token, String message)
         {
-            Program.error(token, message);
+            Program.Error(token, message);
             return new ParseError();
         }
 
         private bool match(params TokenType[] types)
         {
-            foreach(TokenType type in types)
+            foreach (TokenType type in types)
             {
                 if (check(type))
                 {
