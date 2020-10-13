@@ -1,18 +1,21 @@
-﻿using System;
+﻿using crafinginterpreters.cslox.Interpreting;
+using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace crafinginterpreters.cslox
 {
     public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object>
     {
-        private Environment environment = new Environment();
+        public Environment _globals { get; }
+        private Environment _environment;
+
+        public Interpreter()
+        {
+            _globals = new Environment();
+            _environment = _globals;
+            _globals.Define("clock", new StandartLibFun.Clock() as ILoxCallable);
+        }
+
 
         public class RuntimeError : Exception
         {
@@ -46,7 +49,15 @@ namespace crafinginterpreters.cslox
         private string Stringify(object obj)
         {
             if (obj is null) return "nil";
-            if (obj is double) return ((double)obj).ToString();
+            if (obj is double loxDouble)
+            {
+                string text = loxDouble.ToString();
+                if (text.EndsWith(".0"))
+                {
+                    text = text.Substring(0, text.Length - 2);
+                };
+                return text;
+            }
             return obj.ToString();
         }
 
@@ -146,7 +157,7 @@ namespace crafinginterpreters.cslox
         public object VisitAssignExpr(Expr.Assign expr)
         {
             object value = Evaluate(expr.value);
-            environment.Assign(expr.Name, value);
+            _environment.Assign(expr.Name, value);
             return value;
         }
         public object VisitLogicalExpr(Expr.Logical expr)
@@ -164,7 +175,22 @@ namespace crafinginterpreters.cslox
         }
         public object VisitCallExpr(Expr.Call expr)
         {
-            throw new NotImplementedException();
+            Object callee = Evaluate(expr.Callee);
+            List<Object> args = new List<object>();
+            foreach(Expr argument in  expr.Arguments){
+                args.Add(Evaluate(argument));
+            }
+            ILoxCallable function = callee as ILoxCallable;
+            if(function == null)
+            {
+                throw new RuntimeError(expr.Paren, "Can only call functions or classes");
+            }
+            if (args.Count != function.Arity())
+            {
+                throw new RuntimeError(expr.Paren, $"Expected {function.Arity()} arguments" +
+                    $"but only got {args.Count}");
+            }
+            return function.Call(this, args);
         }
         public object VisitGetExpr(Expr.Get expr)
         {
@@ -184,21 +210,21 @@ namespace crafinginterpreters.cslox
         }
         public object VisitVariableExpr(Expr.Variable expr)
         {
-            return environment.Get(expr.Name);
+            return _environment.Get(expr.Name);
         }
 
         public object VisitBlockStmt(Stmt.Block stmt)
         {
-            ExecuteBlock(stmt.statements, new Environment(environment));
+            ExecuteBlock(stmt.statements, new Environment(_environment));
             return null;
         }
 
-        private void ExecuteBlock(List<Stmt> statements, Environment environment)
+        public void ExecuteBlock(List<Stmt> statements, Environment environment)
         {
-            Environment previous = this.environment;
+            Environment previous = this._environment;
             try
             {
-                this.environment = environment;
+                this._environment = environment;
                 foreach (Stmt statement in statements)
                 {
                     Execute(statement);
@@ -206,7 +232,7 @@ namespace crafinginterpreters.cslox
             }
             finally
             {
-                this.environment = previous;
+                this._environment = previous;
             }
         }
 
@@ -223,7 +249,9 @@ namespace crafinginterpreters.cslox
 
         public object VisitFunctionStmt(Stmt.Function stmt)
         {
-            throw new NotImplementedException();
+            LoxFun function = new LoxFun(stmt);
+            _environment.Define(stmt.name._lexme, function);
+            return null;
         }
 
         public object VisitIfStmt(Stmt.If stmt)
@@ -248,7 +276,9 @@ namespace crafinginterpreters.cslox
 
         public object VisitReturnStmt(Stmt.Return stmt)
         {
-            throw new NotImplementedException();
+            object value = null;
+            if (stmt.value != null) value = Evaluate(stmt.value);
+            throw new Return(value);
         }
 
         public object VisitVarStmt(Stmt.Var stmt)
@@ -258,7 +288,7 @@ namespace crafinginterpreters.cslox
             {
                 value = Evaluate(stmt.initializer);
             }
-            environment.Define(stmt.name._lexme, value);
+            _environment.Define(stmt.name._lexme, value);
             return null;
         }
 

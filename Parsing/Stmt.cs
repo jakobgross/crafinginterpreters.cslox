@@ -126,12 +126,12 @@ namespace crafinginterpreters.cslox
         public class Return : Stmt
         {
             public readonly Token name;
-            public readonly Expr initializer;
+            public readonly Expr value;
 
             public Return(Token name, Expr initializer)
             {
                 this.name = name;
-                this.initializer = initializer;
+                this.value = initializer;
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {

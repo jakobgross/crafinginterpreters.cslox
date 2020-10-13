@@ -45,6 +45,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Interpreting\ILoxCallable.cs" />
+    <Compile Include="Interpreting\LoxFun.cs" />
+    <Compile Include="Interpreting\Return.cs" />
+    <Compile Include="Interpreting\StandartLibFun.cs" />
     <Compile Include="Util\AstPrinter.cs" />
     <Compile Include="Interpreting\Environment.cs" />
     <Compile Include="Parsing\Expr.cs" />

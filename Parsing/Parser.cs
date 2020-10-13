@@ -1,14 +1,6 @@
 ﻿using System;
-using System.CodeDom;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Runtime.InteropServices;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace crafinginterpreters.cslox
 {
@@ -39,6 +31,7 @@ namespace crafinginterpreters.cslox
         {
             try
             {
+                if (MatchTokens(TokenType.FUN)) return ParseFunDeclaration("function");
                 if (MatchTokens(TokenType.VAR)) return ParseVarDeclaration();
                 return ParseStatement();
             }
@@ -47,6 +40,25 @@ namespace crafinginterpreters.cslox
                 SynchronizeParser();
                 return null;
             }
+        }
+
+        private Stmt ParseFunDeclaration(string kind)
+        {
+            Token name = ConsumeToken(TokenType.IDENTIFIER, $"Expect {kind} name");
+            ConsumeToken(TokenType.LEFT_PARENTHESIS, $"Expecting '(' after {kind} name.");
+            List<Token> args = new List<Token>();
+            if (!CheckToken(TokenType.RIGHT_PARENTHESIS))
+            {
+                do
+                {
+                    if (args.Count() >= 255) DisplayParserError(PeekToken(), "Can't have more than 255 arguments");
+                    args.Add(ConsumeToken(TokenType.IDENTIFIER, "Expect argument name"));
+                } while (MatchTokens(TokenType.COMMA));
+            }
+            ConsumeToken(TokenType.RIGHT_PARENTHESIS, "Expect ')' after arguments");
+            ConsumeToken(TokenType.LEFT_BRACE, $"Expect '{{' after {kind} declaration");
+            List<Stmt> body = ParseBlockStatement();
+            return new Stmt.Function(name, args, body);
         }
 
         private Stmt ParseVarDeclaration()
@@ -67,10 +79,23 @@ namespace crafinginterpreters.cslox
             if (MatchTokens(TokenType.FOR)) return ParseForStatement();
             if (MatchTokens(TokenType.IF)) return ParseIfStatement();
             if (MatchTokens(TokenType.PRINT)) return ParsePrintStatement();
+            if (MatchTokens(TokenType.RETURN)) return ParseReturnStatement();
             if (MatchTokens(TokenType.WHILE)) return ParseWhileStatement();
             if (MatchTokens(TokenType.LEFT_BRACE)) return new Stmt.Block(ParseBlockStatement());
             return ParseExpressionStatement();
 
+        }
+
+        private Stmt ParseReturnStatement()
+        {
+            Token keyword = PreviousToken();
+            Expr value = null;
+            if (!CheckToken(TokenType.SEMICOLON))
+            {
+                value = ParseExpression();
+            }
+            ConsumeToken(TokenType.SEMICOLON, "Expect ';' after return keyword or return value");
+            return new Stmt.Return(keyword, value);
         }
 
         private Stmt ParseForStatement()
@@ -157,7 +182,7 @@ namespace crafinginterpreters.cslox
                     Token name = ((Expr.Variable)expr).Name;
                     return new Expr.Assign(name, value);
                 }
-                error(equals, "Invalid assignment target.");
+                DisplayParserError(equals, "Invalid assignment target.");
             }
             return expr;
         }
@@ -236,29 +261,55 @@ namespace crafinginterpreters.cslox
 
         private Expr ParseMultiplicationExpression()
         {
-            Expr expr = ParseUnaryExpressions();
+            Expr expr = ParseUnaryExpression();
 
             while (MatchTokens(TokenType.SLASH, TokenType.STAR))
             {
                 Token op = PreviousToken();
-                Expr right = ParseUnaryExpressions();
+                Expr right = ParseUnaryExpression();
                 expr = new Expr.Binary(expr, op, right);
             }
             return expr;
         }
 
-        private Expr ParseUnaryExpressions()
+        private Expr ParseUnaryExpression()
         {
             if (MatchTokens(TokenType.BANG, TokenType.MINUS))
             {
                 Token op = PreviousToken();
-                Expr right = ParseUnaryExpressions();
+                Expr right = ParseUnaryExpression();
                 return new Expr.Unary(op, right);
             }
-            return ParsePrimaryExpressions();
+            return ParseCallExpression();
         }
 
-        private Expr ParsePrimaryExpressions()
+        private Expr ParseCallExpression()
+        {
+            Expr expr = ParsePrimaryExpression();
+            while (true)
+            {
+                if (MatchTokens(TokenType.LEFT_PARENTHESIS)) expr = FinishCallExpression(expr);
+                else break;
+            }
+            return expr;
+        }
+
+        private Expr FinishCallExpression(Expr callee)
+        {
+            List<Expr> arguments = new List<Expr>();
+            if (!CheckToken(TokenType.RIGHT_PARENTHESIS))
+            {
+                do
+                {
+                    if(arguments.Count >= 255) DisplayParserError(PeekToken(), "Function call mustn't have more than 255 arguments");  
+                    arguments.Add(ParseExpression());
+                } while (MatchTokens(TokenType.COMMA));
+            }
+            Token paren = ConsumeToken(TokenType.RIGHT_PARENTHESIS, " Expect ')' after function arguments");
+            return new Expr.Call(callee, paren, arguments);
+        }
+
+        private Expr ParsePrimaryExpression()
         {
             if (MatchTokens(TokenType.FALSE)) return new Expr.Literal(false);
             if (MatchTokens(TokenType.TRUE)) return new Expr.Literal(true);
@@ -271,16 +322,16 @@ namespace crafinginterpreters.cslox
                 ConsumeToken(TokenType.RIGHT_PARENTHESIS, "Expect ')' after expression");
                 return new Expr.Grouping(expr);
             }
-            throw error(PeekToken(), "Expect Expression");
+            throw DisplayParserError(PeekToken(), "Expect Expression");
         }
 
         private Token ConsumeToken(TokenType type, string message)
         {
             if (CheckToken(type)) return AdvanceToken();
-            throw error(PeekToken(), message);
+            throw DisplayParserError(PeekToken(), message);
         }
 
-        private ParseError error(Token token, String message)
+        private ParseError DisplayParserError(Token token, String message)
         {
             Program.DisplayError(token, message);
             return new ParseError();
