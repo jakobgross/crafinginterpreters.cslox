@@ -42,56 +42,56 @@ namespace crafinginterpreters.cslox
 
         internal List<Token> scanTokens()
         {
-            while (!finished())
+            while (!IsFinished())
             {
                 _start = _current;
-                scanToken();
+                ScanToken();
             }
             _tokens.Add(new Token(TokenType.EOF, "", null, _line));
             return _tokens;
         }
 
-        private void scanToken()
+        private void ScanToken()
         {
-            char c = advance();
+            char c = Advance();
             switch (c)
             {
-                case '(':   addToken(TokenType.LEFT_PARENTHESIS);   break;
-                case ')':   addToken(TokenType.RIGHT_PARENTHESIS);  break;
-                case '{':   addToken(TokenType.LEFT_BRACE);         break;
-                case '}':   addToken(TokenType.RIGHT_BRACE);        break;
-                case '-':   addToken(TokenType.MINUS);              break;
-                case '+':   addToken(TokenType.PLUS);               break;
-                case '*':   addToken(TokenType.STAR);               break;
+                case '(':   AddToken(TokenType.LEFT_PARENTHESIS);   break;
+                case ')':   AddToken(TokenType.RIGHT_PARENTHESIS);  break;
+                case '{':   AddToken(TokenType.LEFT_BRACE);         break;
+                case '}':   AddToken(TokenType.RIGHT_BRACE);        break;
+                case '-':   AddToken(TokenType.MINUS);              break;
+                case '+':   AddToken(TokenType.PLUS);               break;
+                case '*':   AddToken(TokenType.STAR);               break;
                 //case '/':   addToken(TokenType.SLASH);              break;
-                case '.':   addToken(TokenType.DOT);                break;
-                case ',':   addToken(TokenType.COMMA);              break;
-                case ';':   addToken(TokenType.SEMICOLON);          break;
+                case '.':   AddToken(TokenType.DOT);                break;
+                case ',':   AddToken(TokenType.COMMA);              break;
+                case ';':   AddToken(TokenType.SEMICOLON);          break;
 
-                case '!':   addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG);       break;
-                case '=':   addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL);     break;
-                case '<':   addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS);       break;
-                case '>':   addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
+                case '!':   AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG);       break;
+                case '=':   AddToken(Match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL);     break;
+                case '<':   AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS);       break;
+                case '>':   AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
 
                 // Comments
                 case '/':
-                    if (match('/'))
+                    if (Match('/'))
                     {
-                        while (peek() != '\n' && !isAtEnd())
-                            advance();
+                        while (Peek() != '\n' && !IsAtEnd())
+                            Advance();
                     }
-                    else if (match('*'))
+                    else if (Match('*'))
                     {
-                        while (peek() != '*' && peekNext() != '/' && !isAtEnd())
+                        while (Peek() != '*' && PeekNext() != '/' && !IsAtEnd())
                         {
-                            if (peek() == '\n') _line++;
-                            advance();
+                            if (Peek() == '\n') _line++;
+                            Advance();
                         }
-                        advance();
-                        advance();
+                        Advance();
+                        Advance();
                     }
                     else
-                        addToken(TokenType.SLASH);
+                        AddToken(TokenType.SLASH);
                     break;
 
                 // Whitespace
@@ -104,105 +104,105 @@ namespace crafinginterpreters.cslox
                     break;
 
                 // Strings
-                case '"': lexString(); break;
+                case '"': LexString(); break;
 
 
                 default:
                     if (Char.IsDigit(c))
                     {
-                        lexNumber();
+                        LexNumber();
                     }
                     else if (Char.IsLetter(c))
                     {
-                        lexIdentifier();
+                        LexIdentifier();
                     }
                     else
                     {
-                        Program.Error(_line, $"unrecognised Token: {c}");
+                        Program.DisplayError(_line, $"unrecognised Token: {c}");
                     }
                     break;
             }
         }
 
-        private void lexIdentifier()
+        private void LexIdentifier()
         {
-            while (Char.IsLetterOrDigit(peek())) advance();
+            while (Char.IsLetterOrDigit(Peek())) Advance();
             string val = _data.Substring(_start, _current - _start);
             TokenType type;
             if (_keywords.TryGetValue(val,out type))
             {
-                addToken(type);
+                AddToken(type);
             }
             else
             {
-                addToken(TokenType.IDENTIFIER, val);
+                AddToken(TokenType.IDENTIFIER, val);
             }
 
 
         }
 
-        private void lexNumber()
+        private void LexNumber()
         {
-            while (Char.IsDigit(peek())) advance();
-            if (peek() == '.' && Char.IsDigit(peekNext()))
+            while (Char.IsDigit(Peek())) Advance();
+            if (Peek() == '.' && Char.IsDigit(PeekNext()))
             {
-                advance();
+                Advance();
 
-                while (Char.IsDigit(peek())) advance();
+                while (Char.IsDigit(Peek())) Advance();
             }
-            addToken(TokenType.NUMBER, Double.Parse(_data.Substring(_start, _current - _start),System.Globalization.NumberStyles.Any,System.Globalization.CultureInfo.InvariantCulture));
+            AddToken(TokenType.NUMBER, Double.Parse(_data.Substring(_start, _current - _start),System.Globalization.NumberStyles.Any,System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        private char peekNext()
+        private char PeekNext()
         {
             if (_current + 1 >= _data.Length) return '\0';
             return _data[_current + 1];
         }
 
-        private void lexString()
+        private void LexString()
         {
-            while(peek() != '"' && !isAtEnd())
+            while(Peek() != '"' && !IsAtEnd())
             {
-                if (peek() == '\n') _line++;
-                advance();
+                if (Peek() == '\n') _line++;
+                Advance();
             }
 
-            if(isAtEnd())
+            if(IsAtEnd())
             {
-                Program.Error(_line, "Unterminated String.");
+                Program.DisplayError(_line, "Unterminated String.");
                 return;
             }
-            advance();
+            Advance();
             string val = _data.Substring(_start + 1, _current - _start - 2);
-            addToken(TokenType.STRING, val);
+            AddToken(TokenType.STRING, val);
         }
 
-        private char peek()
+        private char Peek()
         {
-            if (isAtEnd())
+            if (IsAtEnd())
                 return '\0';
             return _data[_current];
         }
 
-        private void addToken(TokenType type)
+        private void AddToken(TokenType type)
         {
-            addToken(type, null);
+            AddToken(type, null);
         }
 
-        private void addToken(TokenType type, object literal)
+        private void AddToken(TokenType type, object literal)
         {
             string text = _data.Substring(_start, _current - _start);
             _tokens.Add(new Token(type, text, literal, _line));
         }
 
-        private bool isAtEnd()
+        private bool IsAtEnd()
         {
             return _current >= _data.Length;
         }
 
-        private bool match(char expected)
+        private bool Match(char expected)
         {
-            if (isAtEnd())
+            if (IsAtEnd())
                 return false;
             if (_data[_current] != expected)
                 return false;
@@ -210,13 +210,13 @@ namespace crafinginterpreters.cslox
             return true;
         }
 
-        private char advance()
+        private char Advance()
         {
             _current++;
             return _data[_current-1];
         }
 
-        private bool finished()
+        private bool IsFinished()
         {
             return _current >= _data.Length;
         }

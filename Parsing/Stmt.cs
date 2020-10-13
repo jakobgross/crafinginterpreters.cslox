@@ -13,15 +13,15 @@ namespace crafinginterpreters.cslox
     {
         public interface IVisitor<R>
         {
-            R visitBlockStmt(Block stmt);
-            R visitClassStmt(Class stmt);
-            R visitExpressionStmt(Expression stmt);
-            R visitFunctionStmt(Function stmt);
-            R visitIfStmt(If stmt);
-            R visitPrintStmt(Print stmt);
-            R visitReturnStmt(Return stmt);
-            R visitVarStmt(Var stmt);
-            R visitWhileStmt(While stmt);
+            R VisitBlockStmt(Block stmt);
+            R VisitClassStmt(Class stmt);
+            R VisitExpressionStmt(Expression stmt);
+            R VisitFunctionStmt(Function stmt);
+            R VisitIfStmt(If stmt);
+            R VisitPrintStmt(Print stmt);
+            R VisitReturnStmt(Return stmt);
+            R VisitVarStmt(Var stmt);
+            R VisitWhileStmt(While stmt);
         }
         public abstract R Accept<R>(IVisitor<R> visitor);
 
@@ -36,7 +36,7 @@ namespace crafinginterpreters.cslox
 
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitBlockStmt(this);
+                return visitor.VisitBlockStmt(this);
             }
 
         }
@@ -56,7 +56,7 @@ namespace crafinginterpreters.cslox
 
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitClassStmt(this);
+                return visitor.VisitClassStmt(this);
             }
         }
 
@@ -69,7 +69,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitExpressionStmt(this);
+                return visitor.VisitExpressionStmt(this);
             }
         }
 
@@ -88,7 +88,7 @@ namespace crafinginterpreters.cslox
 
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitFunctionStmt(this);
+                return visitor.VisitFunctionStmt(this);
             }
         }
 
@@ -106,7 +106,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitIfStmt(this);
+                return visitor.VisitIfStmt(this);
             }
         }
 
@@ -119,7 +119,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitPrintStmt(this);
+                return visitor.VisitPrintStmt(this);
             }
         }
 
@@ -135,7 +135,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitReturnStmt(this);
+                return visitor.VisitReturnStmt(this);
             }
         }
 
@@ -151,7 +151,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitVarStmt(this);
+                return visitor.VisitVarStmt(this);
             }
         }
 
@@ -167,7 +167,7 @@ namespace crafinginterpreters.cslox
             }
             public override R Accept<R>(IVisitor<R> visitor)
             {
-                return visitor.visitWhileStmt(this);
+                return visitor.VisitWhileStmt(this);
             }
         }
 

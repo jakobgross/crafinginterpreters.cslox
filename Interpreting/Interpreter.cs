@@ -23,27 +23,27 @@ namespace crafinginterpreters.cslox
             }
         }
 
-        public void interpret(List<Stmt> statements)
+        public void Interpret(List<Stmt> statements)
         {
             try
             {
                 foreach (Stmt statement in statements)
                 {
-                    execute(statement);
+                    Execute(statement);
                 }
             }
             catch (RuntimeError e)
             {
-                Program.runtimeError(e);
+                Program.DisplayRuntimeError(e);
             }
         }
 
-        private void execute(Stmt statement)
+        private void Execute(Stmt statement)
         {
             statement.Accept(this);
         }
 
-        private string stringify(object obj)
+        private string Stringify(object obj)
         {
             if (obj is null) return "nil";
             if (obj is double) return ((double)obj).ToString();
@@ -51,18 +51,18 @@ namespace crafinginterpreters.cslox
         }
 
         public object VisitLiteralExpr(Expr.Literal expr) => expr.Value;
-        public object VisitGroupingExpr(Expr.Grouping expr) => evaluate(expr.Expression);
+        public object VisitGroupingExpr(Expr.Grouping expr) => Evaluate(expr.Expression);
 
         public object VisitUnaryExpr(Expr.Unary expr)
         {
-            object right = evaluate(expr.Right);
+            object right = Evaluate(expr.Right);
             switch (expr.Operator._type)
             {
                 case TokenType.MINUS:
                     CheckNumberOperand(expr.Operator, right);
                     return -(double)right;
                 case TokenType.BANG:
-                    return !isTruthy(right);
+                    return !IsTruthy(right);
             }
             return null;
         }
@@ -71,8 +71,8 @@ namespace crafinginterpreters.cslox
 
         public object VisitBinaryExpr(Expr.Binary expr)
         {
-            object left = evaluate(expr.Left);
-            object right = evaluate(expr.Right);
+            object left = Evaluate(expr.Left);
+            object right = Evaluate(expr.Right);
             switch (expr.Operator._type)
             {
                 case TokenType.MINUS:
@@ -108,8 +108,8 @@ namespace crafinginterpreters.cslox
                     return (double)left < (double)right;
                 case TokenType.LESS_EQUAL:
                     return (double)left <= (double)right;
-                case TokenType.BANG_EQUAL: return !isEqual(left, right);
-                case TokenType.EQUAL_EQUAL: return isEqual(left, right);
+                case TokenType.BANG_EQUAL: return !IsEqual(left, right);
+                case TokenType.EQUAL_EQUAL: return IsEqual(left, right);
             }
             return null;
         }
@@ -121,21 +121,21 @@ namespace crafinginterpreters.cslox
             throw new RuntimeError(op, "Operands must be numbers.");
         }
 
-        private bool isEqual(object a, object b)
+        private bool IsEqual(object a, object b)
         {
             if (a is null && b is null) return true;
             if (a == null) return false;
             return a.Equals(b);
         }
 
-        private bool isTruthy(object obj)
+        private bool IsTruthy(object obj)
         {
             if (obj is null) return false;
             if (obj is bool boolObj) return boolObj;
             return true;
         }
 
-        private object evaluate(Expr expr) => expr.Accept(this);
+        private object Evaluate(Expr expr) => expr.Accept(this);
 
         private void CheckNumberOperand(Token op, object operand)
         {
@@ -145,22 +145,22 @@ namespace crafinginterpreters.cslox
 
         public object VisitAssignExpr(Expr.Assign expr)
         {
-            object value = evaluate(expr.value);
+            object value = Evaluate(expr.value);
             environment.Assign(expr.Name, value);
             return value;
         }
         public object VisitLogicalExpr(Expr.Logical expr)
         {
-            object left = evaluate(expr.Left);
+            object left = Evaluate(expr.Left);
             if(expr.Operator._type == TokenType.OR)
             {
-                if (isTruthy(left)) return left;
+                if (IsTruthy(left)) return left;
             }
             else
             {
-                if (!isTruthy(left)) return left;
+                if (!IsTruthy(left)) return left;
             }
-            return evaluate(expr.Right);
+            return Evaluate(expr.Right);
         }
         public object VisitCallExpr(Expr.Call expr)
         {
@@ -187,13 +187,13 @@ namespace crafinginterpreters.cslox
             return environment.Get(expr.Name);
         }
 
-        public object visitBlockStmt(Stmt.Block stmt)
+        public object VisitBlockStmt(Stmt.Block stmt)
         {
-            executeBlock(stmt.statements, new Environment(environment));
+            ExecuteBlock(stmt.statements, new Environment(environment));
             return null;
         }
 
-        private void executeBlock(List<Stmt> statements, Environment environment)
+        private void ExecuteBlock(List<Stmt> statements, Environment environment)
         {
             Environment previous = this.environment;
             try
@@ -201,7 +201,7 @@ namespace crafinginterpreters.cslox
                 this.environment = environment;
                 foreach (Stmt statement in statements)
                 {
-                    execute(statement);
+                    Execute(statement);
                 }
             }
             finally
@@ -210,61 +210,65 @@ namespace crafinginterpreters.cslox
             }
         }
 
-        public object visitClassStmt(Stmt.Class stmt)
+        public object VisitClassStmt(Stmt.Class stmt)
         {
             throw new NotImplementedException();
         }
 
-        public object visitExpressionStmt(Stmt.Expression stmt)
+        public object VisitExpressionStmt(Stmt.Expression stmt)
         {
-            evaluate(stmt.expression);
+            Evaluate(stmt.expression);
             return null;
         }
 
-        public object visitFunctionStmt(Stmt.Function stmt)
+        public object VisitFunctionStmt(Stmt.Function stmt)
         {
             throw new NotImplementedException();
         }
 
-        public object visitIfStmt(Stmt.If stmt)
+        public object VisitIfStmt(Stmt.If stmt)
         {
-            if (isTruthy(evaluate(stmt.condition)))
+            if (IsTruthy(Evaluate(stmt.condition)))
             {
-                execute(stmt.thenBranch);
+                Execute(stmt.thenBranch);
             }
             else if(stmt.elseBranch != null)
             {
-                execute(stmt.elseBranch);
+                Execute(stmt.elseBranch);
             }
             return null;
         }
 
-        public object visitPrintStmt(Stmt.Print stmt)
+        public object VisitPrintStmt(Stmt.Print stmt)
         {
-            Object value = evaluate(stmt.expression);
-            Console.WriteLine(stringify(value));
+            Object value = Evaluate(stmt.expression);
+            Console.WriteLine(Stringify(value));
             return null;
         }
 
-        public object visitReturnStmt(Stmt.Return stmt)
+        public object VisitReturnStmt(Stmt.Return stmt)
         {
             throw new NotImplementedException();
         }
 
-        public object visitVarStmt(Stmt.Var stmt)
+        public object VisitVarStmt(Stmt.Var stmt)
         {
             object value = null;
             if(stmt.initializer != null)
             {
-                value = evaluate(stmt.initializer);
+                value = Evaluate(stmt.initializer);
             }
             environment.Define(stmt.name._lexme, value);
             return null;
         }
 
-        public object visitWhileStmt(Stmt.While stmt)
+        public object VisitWhileStmt(Stmt.While stmt)
         {
-            throw new NotImplementedException();
+            while (IsTruthy(Evaluate(stmt.condition)))
+            {
+                Execute(stmt.body);
+            }
+            return null;
         }
     }
 }

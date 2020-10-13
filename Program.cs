@@ -60,32 +60,32 @@ namespace crafinginterpreters.cslox
             Parser parser = new Parser(tokens);
             List<Stmt> statements = parser.Parse();
             if (_error) return;
-            interpreter.interpret(statements);
+            interpreter.Interpret(statements);
         }
 
-        public static void Error(int line, String message)
+        public static void DisplayError(int line, String message)
         {
-            Report(line, "", message);
+            ReportToCommandLine(line, "", message);
         }
 
-        private static void Report(int line, string where, string message)
+        private static void ReportToCommandLine(int line, string where, string message)
         {
             Console.Error.WriteLine($"[line {line}] Error: {where}: {message}");
             _error = true;
         }
 
-        internal static void Error(Token token, string message)
+        internal static void DisplayError(Token token, string message)
         {
             if (token._type == TokenType.EOF)
             {
-                Report(token._line, "at end", message);
+                ReportToCommandLine(token._line, "at end", message);
             }
             else
             {
-                Report(token._line, "at '" + token._lexme + "'", message);
+                ReportToCommandLine(token._line, "at '" + token._lexme + "'", message);
             }
         }
-        public static void runtimeError(RuntimeError error)
+        public static void DisplayRuntimeError(RuntimeError error)
         {
             Console.Error.WriteLine("[line " + error._token._line + "] Runtime Error: " + error.Message);
             _hadRuntimeError = true;
