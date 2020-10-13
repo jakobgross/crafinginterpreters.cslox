@@ -40,7 +40,7 @@ namespace crafinginterpreters.cslox
             try
             {
                 if (MatchTokens(TokenType.VAR)) return ParseVarDeclaration();
-                return ParseStatements();
+                return ParseStatement();
             }
             catch (ParseError e)
             {
@@ -62,8 +62,9 @@ namespace crafinginterpreters.cslox
 
         }
 
-        private Stmt ParseStatements()
+        private Stmt ParseStatement()
         {
+            if (MatchTokens(TokenType.FOR)) return ParseForStatement();
             if (MatchTokens(TokenType.IF)) return ParseIfStatement();
             if (MatchTokens(TokenType.PRINT)) return ParsePrintStatement();
             if (MatchTokens(TokenType.WHILE)) return ParseWhileStatement();
@@ -72,12 +73,42 @@ namespace crafinginterpreters.cslox
 
         }
 
+        private Stmt ParseForStatement()
+        {
+            ConsumeToken(TokenType.LEFT_PARENTHESIS, "Expect '(' after for keyword");
+            Stmt initializer;
+
+            if (MatchTokens(TokenType.SEMICOLON)) initializer = null;
+            else if (MatchTokens(TokenType.VAR)) initializer = ParseVarDeclaration();
+            else initializer = ParseExpressionStatement();
+
+            Expr condition = null;
+            if (!CheckToken(TokenType.SEMICOLON)) condition = ParseExpression();
+            ConsumeToken(TokenType.SEMICOLON, "Expect ';' after for loop condition");
+            Expr increment = null;
+            if (!CheckToken(TokenType.RIGHT_PARENTHESIS)) increment = ParseExpression();
+            ConsumeToken(TokenType.RIGHT_PARENTHESIS, "Expect ')' after for clause");
+            Stmt body = ParseStatement();
+            if(increment != null)
+            {
+                body = new Stmt.Block(new List<Stmt>() { body, new Stmt.Expression(increment) });
+            }
+            if (condition is null) condition = new Expr.Literal(true);
+            body = new Stmt.While(condition, body);
+            if(initializer != null)
+            {
+                body = new Stmt.Block(new List<Stmt>() { initializer, body });
+            }
+            return body;
+
+        }
+
         private Stmt ParseWhileStatement()
         {
             ConsumeToken(TokenType.LEFT_PARENTHESIS, "Expect '(' after while keyword");
             Expr condition = ParseExpression();
             ConsumeToken(TokenType.RIGHT_PARENTHESIS, "Expect ')' after while condition");
-            Stmt body = ParseStatements();
+            Stmt body = ParseStatement();
             return new Stmt.While(condition, body);
         }
 
@@ -86,11 +117,11 @@ namespace crafinginterpreters.cslox
             ConsumeToken(TokenType.LEFT_PARENTHESIS, "Expect '(' after if keyword");
             Expr condition = ParseExpression();
             ConsumeToken(TokenType.RIGHT_PARENTHESIS, "Expect ')' after if condition");
-            Stmt thenBranch = ParseStatements();
+            Stmt thenBranch = ParseStatement();
             Stmt elseBranch = null;
             if (MatchTokens(TokenType.ELSE))
             {
-                elseBranch = ParseStatements();
+                elseBranch = ParseStatement();
             }
             return new Stmt.If(condition, thenBranch, elseBranch);
         }
@@ -98,7 +129,7 @@ namespace crafinginterpreters.cslox
         private List<Stmt> ParseBlockStatement()
         {
             List<Stmt> statements = new List<Stmt>();
-            while(!check(TokenType.RIGHT_BRACE) && !IsLastToken())
+            while(!CheckToken(TokenType.RIGHT_BRACE) && !IsLastToken())
             {
                 statements.Add(ParseDeclaration());
             }
@@ -245,7 +276,7 @@ namespace crafinginterpreters.cslox
 
         private Token ConsumeToken(TokenType type, string message)
         {
-            if (check(type)) return AdvanceToken();
+            if (CheckToken(type)) return AdvanceToken();
             throw error(PeekToken(), message);
         }
 
@@ -259,7 +290,7 @@ namespace crafinginterpreters.cslox
         {
             foreach (TokenType type in types)
             {
-                if (check(type))
+                if (CheckToken(type))
                 {
                     AdvanceToken();
                     return true;
@@ -285,7 +316,7 @@ namespace crafinginterpreters.cslox
             return PeekToken()._type == TokenType.EOF;
         }
 
-        private bool check(TokenType type)
+        private bool CheckToken(TokenType type)
         {
             if (IsLastToken()) return false;
             return PeekToken()._type == type;
